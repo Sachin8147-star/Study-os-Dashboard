@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="{{ theme }}">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyOS — {{ username }}'s Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+/* ===== DESIGN TOKENS ===== */
+:root {
+  /* Dark mode (default) */
+  --bg: #0a0a0f;
+  --surface: #111118;
+  --surface2: #1a1a24;
+  --surface3: #22222f;
+  --border: rgba(255,255,255,0.07);
+  --border-bright: rgba(255,255,255,0.15);
+  --text: #f0f0f8;
+  --text-muted: #7070a0;
+  --text-dim: #404060;
+  --shadow: rgba(0,0,0,0.5);
+  --topbar-bg: rgba(10,10,15,0.9);
+  --accent: #7c6aff;
+  --accent2: #ff6a9b;
+  --accent3: #6affd4;
+  --accent4: #ffd96a;
+  --danger: #ff4a6a;
+  --success: #4affa0;
+  --glow: rgba(124,106,255,0.15);
+  --font-display:'Syne',sans-serif;
+  --font-mono:'Space Mono',monospace;
+  --font-body:'DM Sans',sans-serif;
+  --radius:16px; --radius-sm:10px; --taskbar-h:54px;
+}
+
+[data-theme="light"] {
+  --bg: #eeeef7;
+  --surface: #ffffff;
+  --surface2: #f4f4fc;
+  --surface3: #eaeaf5;
+  --border: rgba(0,0,0,0.07);
+  --border-bright: rgba(0,0,0,0.14);
+  --text: #0d0d1f;
+  --text-muted: #5555a0;
+  --text-dim: #b0b0cc;
+  --shadow: rgba(0,0,0,0.12);
+  --topbar-bg: rgba(238,238,247,0.92);
+  --glow: rgba(124,106,255,0.06);
+}
+
+/* ===== BASE ===== */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+html,body{width:100%;height:100%;overflow:hidden;}
+body{
+  background:var(--bg);color:var(--text);
+  font-family:var(--font-body);font-size:14px;line-height:1.5;
+  transition:background 0.3s, color 0.3s;
+}
+button{cursor:pointer;font-family:inherit;border:none;background:none;}
+input,textarea,select{font-family:inherit;outline:none;}
+
+/* ===== BG CANVAS ===== */
+#bg-canvas{position:fixed;inset:0;z-index:0;pointer-events:none;opacity:0.35;transition:opacity .3s;}
+[data-theme="light"] #bg-canvas{opacity:0.12;}
+
+/* ===== OS SHELL ===== */
+#os-shell{position:fixed;inset:0;z-index:1;display:flex;flex-direction:column;}
+
+/* ===== TOPBAR ===== */
+#topbar{
+  height:var(--taskbar-h);
+  background:var(--topbar-bg);
+  backdrop-filter:blur(20px);
+  -webkit-backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+  display:flex;align-items:center;padding:0 20px;gap:14px;flex-shrink:0;z-index:100;
+  box-shadow:0 1px 20px var(--shadow);
+}
+.os-logo{
+  font-family:var(--font-mono);font-size:13px;font-weight:700;
+  color:var(--accent);display:flex;align-items:center;gap:8px;letter-spacing:.08em;
+}
+.os-logo .os-ver{color:var(--text-muted);font-weight:400;font-size:11px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--success);animation:pulse 2s infinite;flex-shrink:0;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.4;}}
+.user-chip{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:20px;padding:4px 12px 4px 8px;
+  display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-muted);
+}
+.user-avatar{
+  width:22px;height:22px;border-radius:50%;
+  background:linear-gradient(135deg,var(--accent),var(--accent2));
+  display:flex;align-items:center;justify-content:center;
+  font-size:11px;color:white;font-family:var(--font-mono);font-weight:700;
+}
+.streak-badge{
+  background:linear-gradient(135deg,var(--accent4),#ff9f2f);
+  color:#000;font-family:var(--font-mono);font-size:10px;font-weight:700;
+  padding:4px 10px;border-radius:20px;display:flex;align-items:center;gap:4px;
+}
+.topbar-spacer{flex:1;}
+.topbar-actions{display:flex;align-items:center;gap:6px;}
+.topbar-icon{
+  width:32px;height:32px;border-radius:8px;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--text-muted);font-size:15px;transition:all .2s;cursor:pointer;
+  border:1px solid transparent;
+}
+.topbar-icon:hover{background:var(--surface2);color:var(--text);border-color:var(--border);}
+.theme-toggle-btn{
+  display:flex;align-items:center;gap:8px;
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:24px;padding:5px 5px 5px 12px;cursor:pointer;
+  transition:all .2s;font-size:12px;color:var(--text-muted);
+  font-family:var(--font-mono);
+}
+.theme-toggle-btn:hover{border-color:var(--accent);color:var(--accent);}
+.theme-pill{
+  width:28px;height:28px;border-radius:50%;
+  background:var(--surface3);display:flex;align-items:center;justify-content:center;
+  font-size:14px;transition:all .3s;
+}
+.topbar-time{
+  font-family:var(--font-mono);font-size:13px;color:var(--text-muted);
+  display:flex;flex-direction:column;align-items:flex-end;line-height:1.2;
+}
+.topbar-time .time-val{color:var(--text);font-weight:700;font-size:14px;}
+.topbar-time .date-val{font-size:10px;color:var(--text-dim);}
+.logout-btn{
+  padding:5px 14px;border-radius:8px;font-size:11px;
+  font-family:var(--font-mono);letter-spacing:.05em;
+  background:var(--surface2);border:1px solid var(--border);
+  color:var(--text-muted);transition:all .2s;
+}
+.logout-btn:hover{border-color:var(--danger);color:var(--danger);}
+
+/* ===== DESKTOP ===== */
+#desktop{flex:1;overflow:hidden;position:relative;padding:16px;}
+
+/* ===== GRID ===== */
+#grid{
+  display:grid;
+  grid-template-columns:270px 1fr 1fr 270px;
+  grid-template-rows:1fr 1fr 1fr;
+  gap:14px;height:100%;
+  grid-template-areas:
+    "tasks  focus  focus  stats "
+    "tasks  focus  focus  habits"
+    "notes  notes  cal    habits";
+}
+
+/* ===== WIDGET BASE ===== */
+.widget{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);padding:18px;
+  display:flex;flex-direction:column;gap:12px;
+  overflow:hidden;position:relative;
+  transition:border-color .3s,box-shadow .3s,background .3s;
+  box-shadow:0 2px 20px var(--shadow);
+  animation:fadeUp .5s ease both;
+}
+.widget::before{
+  content:'';position:absolute;inset:0;border-radius:var(--radius);
+  background:linear-gradient(135deg,var(--glow),transparent);
+  pointer-events:none;opacity:0;transition:opacity .3s;
+}
+.widget:hover::before{opacity:1;}
+.widget:hover{border-color:var(--border-bright);box-shadow:0 4px 30px var(--shadow);}
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.widget:nth-child(1){animation-delay:.05s;}
+.widget:nth-child(2){animation-delay:.1s;}
+.widget:nth-child(3){animation-delay:.15s;}
+.widget:nth-child(4){animation-delay:.2s;}
+.widget:nth-child(5){animation-delay:.25s;}
+.widget:nth-child(6){animation-delay:.3s;}
+#w-tasks{grid-area:tasks;}
+#w-focus{grid-area:focus;overflow:visible;}
+#w-stats{grid-area:stats;}
+#w-habits{grid-area:habits;}
+#w-notes{grid-area:notes;padding:0;flex-direction:row;gap:0;}
+#w-cal{grid-area:cal;}
+
+/* ===== WIDGET HEADER ===== */
+.w-header{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.w-icon{
+  width:30px;height:30px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;flex-shrink:0;
+}
+.w-title{font-family:var(--font-display);font-size:14px;font-weight:700;flex:1;letter-spacing:.02em;}
+.w-badge{
+  font-family:var(--font-mono);font-size:10px;color:var(--text-muted);
+  background:var(--surface2);padding:2px 8px;border-radius:20px;
+}
+.w-action{
+  width:26px;height:26px;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:16px;color:var(--text-muted);transition:all .2s;cursor:pointer;
+}
+.w-action:hover{background:var(--surface2);color:var(--accent);transform:scale(1.1);}
+
+/* ===== SCROLL ===== */
+.scroll-area{overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:var(--surface3) transparent;}
+.scroll-area::-webkit-scrollbar{width:4px;}
+.scroll-area::-webkit-scrollbar-thumb{background:var(--surface3);border-radius:4px;}
+
+/* ===== TASKS ===== */
+#w-tasks .w-icon{background:rgba(124,106,255,.15);color:var(--accent);}
+.task-input-row{display:flex;gap:8px;flex-shrink:0;}
+.task-input{
+  flex:1;background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:13px;
+  transition:border-color .2s;
+}
+.task-input:focus{border-color:var(--accent);}
+.task-input::placeholder{color:var(--text-dim);}
+.add-btn{
+  width:34px;height:34px;border-radius:var(--radius-sm);
+  background:var(--accent);color:white;display:flex;align-items:center;justify-content:center;
+  font-size:18px;transition:all .2s;flex-shrink:0;
+}
+.add-btn:hover{background:#9d8eff;transform:scale(1.05);}
+.task-filters{display:flex;gap:6px;flex-shrink:0;}
+.filter-btn{
+  padding:4px 10px;border-radius:20px;font-size:10px;
+  font-family:var(--font-mono);font-weight:700;letter-spacing:.05em;
+  border:1px solid var(--border);color:var(--text-muted);transition:all .2s;
+}
+.filter-btn:hover,.filter-btn.active{border-color:var(--accent);color:var(--accent);background:rgba(124,106,255,.1);}
+.task-list{display:flex;flex-direction:column;gap:6px;}
+.task-item{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:var(--radius-sm);
+  background:var(--surface2);border:1px solid var(--border);
+  transition:all .2s;animation:slideIn .25s ease both;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(-8px);}to{opacity:1;transform:translateX(0);}}
+.task-item:hover{border-color:var(--border-bright);}
+.task-item.done{opacity:.5;}
+.task-item.done .task-text{text-decoration:line-through;}
+.task-check{
+  width:18px;height:18px;border-radius:6px;border:2px solid var(--border-bright);
+  flex-shrink:0;display:flex;align-items:center;justify-content:center;
+  font-size:10px;transition:all .2s;cursor:pointer;
+}
+.task-item.done .task-check{background:var(--success);border-color:var(--success);}
+.task-text{flex:1;font-size:13px;line-height:1.3;}
+.task-subj{font-size:10px;color:var(--text-dim);display:block;}
+.task-priority{width:6px;height:6px;border-radius:50%;flex-shrink:0;}
+.priority-high{background:var(--danger);}
+.priority-med{background:var(--accent4);}
+.priority-low{background:var(--success);}
+.task-del{opacity:0;font-size:11px;color:var(--danger);padding:2px 5px;border-radius:4px;transition:opacity .2s;}
+.task-item:hover .task-del{opacity:1;}
+.empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;padding:24px;color:var(--text-dim);text-align:center;}
+.empty-icon{font-size:28px;opacity:.5;}
+.empty-text{font-size:12px;}
+
+/* ===== POMODORO ===== */
+#w-focus .w-icon{background:rgba(255,106,155,.15);color:var(--accent2);}
+.focus-layout{display:grid;grid-template-columns:1fr 1fr;gap:14px;flex:1;min-height:0;}
+.pomodoro-panel{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+  background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:20px;
+}
+.timer-ring-wrap{position:relative;width:150px;height:150px;}
+#timer-svg{position:absolute;inset:0;transform:rotate(-90deg);}
+#timer-track{fill:none;stroke:var(--surface3);stroke-width:7;}
+#timer-progress{
+  fill:none;stroke:var(--accent2);stroke-width:7;stroke-linecap:round;
+  stroke-dasharray:440;stroke-dashoffset:0;
+  transition:stroke-dashoffset 1s linear,stroke .5s;
+  filter:drop-shadow(0 0 8px var(--accent2));
+}
+.timer-display{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+.timer-time{font-family:var(--font-mono);font-size:30px;font-weight:700;color:var(--text);line-height:1;letter-spacing:-1px;}
+.timer-mode{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);margin-top:4px;letter-spacing:.1em;}
+.timer-controls{display:flex;gap:8px;}
+.timer-btn{padding:8px 18px;border-radius:30px;font-size:12px;font-family:var(--font-mono);font-weight:700;letter-spacing:.05em;transition:all .2s;}
+.timer-btn-play{background:var(--accent2);color:white;box-shadow:0 4px 16px rgba(255,106,155,.3);}
+.timer-btn-play:hover{transform:scale(1.05);box-shadow:0 6px 24px rgba(255,106,155,.5);}
+.timer-btn-reset{background:var(--surface3);color:var(--text-muted);border:1px solid var(--border);}
+.timer-btn-reset:hover{color:var(--text);border-color:var(--border-bright);}
+.timer-modes{display:flex;gap:5px;}
+.mode-btn{padding:4px 10px;border-radius:20px;font-size:10px;font-family:var(--font-mono);border:1px solid var(--border);color:var(--text-muted);transition:all .2s;}
+.mode-btn:hover,.mode-btn.active{border-color:var(--accent2);color:var(--accent2);background:rgba(255,106,155,.1);}
+.session-dots{display:flex;gap:5px;}
+.session-dot{width:8px;height:8px;border-radius:50%;background:var(--surface3);border:1px solid var(--border);transition:all .3s;}
+.session-dot.done{background:var(--accent2);border-color:var(--accent2);}
+.focus-right{display:flex;flex-direction:column;gap:10px;min-height:0;}
+.focus-label{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:.1em;text-transform:uppercase;}
+.subject-input{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:7px 12px;color:var(--text);font-size:13px;width:100%;
+  transition:border-color .2s;
+}
+.subject-input:focus{border-color:var(--accent2);}
+.focus-stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;}
+.focus-stat{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px;text-align:center;}
+.focus-stat-val{font-family:var(--font-mono);font-size:18px;font-weight:700;color:var(--accent2);}
+.focus-stat-label{font-size:9px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:.05em;}
+.sessions-log{display:flex;flex-direction:column;gap:5px;}
+.session-entry{
+  padding:8px 11px;border-radius:var(--radius-sm);background:var(--surface2);
+  border:1px solid var(--border);display:flex;align-items:center;gap:8px;
+}
+.session-entry-dot{width:7px;height:7px;border-radius:50%;background:var(--accent2);flex-shrink:0;}
+.session-entry-subj{flex:1;font-size:12px;}
+.session-entry-dur{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);}
+.session-entry-time{font-family:var(--font-mono);font-size:9px;color:var(--text-dim);}
+
+/* ===== STATS ===== */
+#w-stats .w-icon{background:rgba(106,255,212,.15);color:var(--accent3);}
+.chart-wrap{flex:1;min-height:0;position:relative;}
+
+/* ===== HABITS ===== */
+#w-habits .w-icon{background:rgba(255,217,106,.15);color:var(--accent4);}
+.habit-list{display:flex;flex-direction:column;gap:10px;}
+.habit-item{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius-sm);padding:11px;}
+.habit-header{display:flex;align-items:center;gap:8px;margin-bottom:8px;}
+.habit-icon-em{font-size:17px;}
+.habit-name{flex:1;font-size:13px;font-weight:500;}
+.habit-streak{font-family:var(--font-mono);font-size:11px;color:var(--accent4);font-weight:700;}
+.habit-del{opacity:0;font-size:10px;color:var(--danger);transition:opacity .2s;padding:2px 4px;border-radius:4px;}
+.habit-item:hover .habit-del{opacity:1;}
+.habit-dots{display:flex;gap:4px;margin-bottom:7px;}
+.habit-dot{
+  width:22px;height:22px;border-radius:6px;background:var(--surface3);border:1px solid var(--border);
+  display:flex;align-items:center;justify-content:center;font-size:9px;cursor:pointer;
+  transition:all .2s;font-family:var(--font-mono);color:var(--text-dim);
+}
+.habit-dot.done{background:rgba(255,217,106,.2);border-color:var(--accent4);color:var(--accent4);}
+.habit-dot:hover{transform:scale(1.12);}
+.habit-bar{height:3px;background:var(--surface3);border-radius:2px;overflow:hidden;}
+.habit-fill{height:100%;background:linear-gradient(90deg,var(--accent4),#ff9f2f);border-radius:2px;transition:width .5s ease;}
+
+/* ===== NOTES ===== */
+.notes-sidebar{width:190px;flex-shrink:0;border-right:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:10px;}
+.notes-header{display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--border);}
+.notes-header-title{font-family:var(--font-display);font-size:13px;font-weight:700;}
+.subject-list{display:flex;flex-direction:column;gap:3px;}
+.subject-item{
+  padding:7px 10px;border-radius:var(--radius-sm);font-size:12px;cursor:pointer;
+  transition:all .2s;display:flex;align-items:center;gap:7px;border:1px solid transparent;
+}
+.subject-item:hover{background:var(--surface2);}
+.subject-item.active{background:rgba(124,106,255,.1);border-color:rgba(124,106,255,.3);color:var(--accent);}
+.subject-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;}
+.subject-add-row{display:flex;gap:6px;flex-shrink:0;}
+.subject-input-field{
+  flex:1;background:var(--surface2);border:1px solid var(--border);
+  border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px;
+}
+.subject-input-field:focus{border-color:var(--accent);}
+.notes-editor{flex:1;display:flex;flex-direction:column;padding:14px;gap:8px;}
+.notes-title-input{
+  background:none;border:none;font-family:var(--font-display);
+  font-size:18px;font-weight:700;color:var(--text);width:100%;
+  padding:0 0 8px 0;border-bottom:1px solid var(--border);
+}
+.notes-title-input::placeholder{color:var(--text-dim);}
+.notes-textarea{flex:1;background:none;border:none;color:var(--text);font-size:13px;line-height:1.7;resize:none;width:100%;}
+.notes-textarea::placeholder{color:var(--text-dim);}
+.notes-toolbar{display:flex;gap:5px;border-top:1px solid var(--border);padding-top:8px;flex-shrink:0;align-items:center;}
+.toolbar-btn{padding:4px 9px;border-radius:6px;font-size:11px;color:var(--text-muted);border:1px solid var(--border);transition:all .2s;font-family:var(--font-mono);}
+.toolbar-btn:hover{border-color:var(--accent);color:var(--accent);}
+.notes-saved{font-family:var(--font-mono);font-size:10px;color:var(--success);margin-left:auto;display:flex;align-items:center;gap:4px;transition:opacity .3s;}
+.notes-saved.hidden{opacity:0;}
+
+/* ===== CALENDAR ===== */
+#w-cal .w-icon{background:rgba(255,106,155,.15);color:var(--accent2);}
+.cal-header-row{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.cal-month{font-family:var(--font-display);font-size:14px;font-weight:700;flex:1;}
+.cal-nav{
+  width:25px;height:25px;border-radius:7px;background:var(--surface2);
+  border:1px solid var(--border);display:flex;align-items:center;justify-content:center;
+  color:var(--text-muted);font-size:12px;transition:all .2s;cursor:pointer;
+}
+.cal-nav:hover{border-color:var(--accent2);color:var(--accent2);}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;flex-shrink:0;}
+.cal-day-label{text-align:center;font-family:var(--font-mono);font-size:9px;color:var(--text-dim);padding:2px 0;letter-spacing:.05em;}
+.cal-day{
+  aspect-ratio:1;border-radius:7px;display:flex;align-items:center;justify-content:center;
+  font-size:11px;font-family:var(--font-mono);cursor:pointer;transition:all .2s;
+  position:relative;color:var(--text-muted);
+}
+.cal-day:hover{background:var(--surface2);color:var(--text);}
+.cal-day.today{background:var(--accent2);color:white;font-weight:700;box-shadow:0 2px 10px rgba(255,106,155,.4);}
+.cal-day.selected:not(.today){background:rgba(255,106,155,.12);color:var(--accent2);border:1px solid rgba(255,106,155,.3);}
+.cal-day.has-event::after{content:'';position:absolute;bottom:2px;width:4px;height:4px;border-radius:50%;background:var(--accent);}
+.cal-day.other-month{color:var(--text-dim);opacity:.35;}
+.cal-events-section{display:flex;flex-direction:column;gap:4px;flex:1;overflow-y:auto;}
+.cal-event-item{
+  padding:6px 10px;border-radius:var(--radius-sm);font-size:12px;
+  display:flex;align-items:center;gap:8px;border-left:3px solid;background:var(--surface2);
+}
+.cal-event-time{font-family:var(--font-mono);font-size:10px;color:var(--text-muted);flex-shrink:0;}
+.cal-event-del{opacity:0;font-size:10px;color:var(--danger);transition:opacity .2s;margin-left:auto;cursor:pointer;padding:2px 4px;}
+.cal-event-item:hover .cal-event-del{opacity:1;}
+
+/* ===== MODALS ===== */
+.modal-overlay{
+  position:fixed;inset:0;z-index:1000;
+  background:rgba(0,0,0,.65);backdrop-filter:blur(6px);
+  display:none;align-items:center;justify-content:center;
+}
+.modal-overlay.show{display:flex;}
+.modal{
+  background:var(--surface);border:1px solid var(--border-bright);
+  border-radius:var(--radius);padding:24px;min-width:320px;max-width:400px;width:90%;
+  box-shadow:0 24px 60px rgba(0,0,0,.5);animation:modalIn .25s ease;
+}
+@keyframes modalIn{from{opacity:0;transform:scale(.96) translateY(10px);}to{opacity:1;transform:scale(1) translateY(0);}}
+.modal-title{font-family:var(--font-display);font-size:17px;font-weight:700;margin-bottom:16px;}
+.modal-form{display:flex;flex-direction:column;gap:12px;}
+.form-label{font-size:10px;color:var(--text-muted);font-family:var(--font-mono);letter-spacing:.05em;margin-bottom:5px;display:block;}
+.form-input{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:10px 14px;color:var(--text);font-size:14px;width:100%;
+  transition:border-color .2s;
+}
+.form-input:focus{border-color:var(--accent);}
+.form-select{
+  background:var(--surface2);border:1px solid var(--border);
+  border-radius:var(--radius-sm);padding:10px 14px;color:var(--text);font-size:14px;width:100%;cursor:pointer;
+}
+.modal-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:8px;}
+.btn-primary{
+  padding:9px 20px;border-radius:10px;background:var(--accent);color:white;
+  font-family:var(--font-mono);font-size:12px;font-weight:700;letter-spacing:.05em;transition:all .2s;
+}
+.btn-primary:hover{background:#9d8eff;transform:scale(1.03);}
+.btn-secondary{
+  padding:9px 20px;border-radius:10px;background:var(--surface2);
+  color:var(--text-muted);border:1px solid var(--border);font-family:var(--font-mono);font-size:12px;transition:all .2s;
+}
+.btn-secondary:hover{color:var(--text);}
+
+/* ===== TOAST ===== */
+#toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.toast{
+  background:var(--surface);border:1px solid var(--border-bright);
+  border-radius:var(--radius-sm);padding:12px 16px;
+  display:flex;align-items:center;gap:12px;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);min-width:240px;
+  animation:toastIn .3s ease;pointer-events:all;
+}
+@keyframes toastIn{from{opacity:0;transform:translateX(20px);}to{opacity:1;transform:translateX(0);}}
+.toast.out{animation:toastOut .3s ease forwards;}
+@keyframes toastOut{to{opacity:0;transform:translateX(20px);}}
+.toast-icon{font-size:18px;}
+.toast-title{font-weight:600;font-size:13px;}
+.toast-msg{font-size:12px;color:var(--text-muted);}
+
+/* ===== RESPONSIVE ===== */
+@media(max-width:1200px){
+  #grid{
+    grid-template-columns:250px 1fr 250px;
+    grid-template-areas:"tasks  focus  stats ""tasks  focus  habits""notes  notes  habits""cal    cal    habits";
+  }
+}
+@media(max-width:900px){
+  #grid{
+    grid-template-columns:1fr 1fr;
+    grid-template-areas:"focus  focus ""tasks  stats ""habits habits""notes  notes ""cal    cal   ";
+    height:auto;overflow-y:auto;
+  }
+  #desktop{overflow-y:auto;}
+  .focus-layout{grid-template-columns:1fr;}
+  #w-notes{flex-direction:column;}
+  .notes-sidebar{width:100%;border-right:none;border-bottom:1px solid var(--border);}
+}
+@media(max-width:600px){
+  #grid{grid-template-columns:1fr;grid-template-areas:"focus""tasks""stats""habits""notes""cal";}
+  #topbar{padding:0 12px;gap:8px;}
+  .user-chip .user-name{display:none;}
+}
+
+/* ===== LOADING INDICATOR ===== */
+.loading{display:flex;align-items:center;gap:8px;color:var(--text-muted);font-size:12px;font-family:var(--font-mono);}
+.loading::before{content:'';width:12px;height:12px;border:2px solid var(--border-bright);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+</style>
+</head>
+<body>
+<canvas id="bg-canvas"></canvas>
+<div id="os-shell">
+
+  <!-- TOPBAR -->
+  <div id="topbar">
+    <div class="os-logo">◈ StudyOS <span class="os-ver">v2.0</span></div>
+    <div class="live-dot"></div>
+    <div class="user-chip">
+      <div class="user-avatar" id="user-avatar">{{ username|slice:":1"|upper }}</div>
+      <span class="user-name">{{ username }}</span>
+    </div>
+    <div class="streak-badge">🔥 <span id="streak-count">0</span></div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <button class="theme-toggle-btn" onclick="toggleTheme()" id="theme-toggle-btn">
+        <span id="theme-label">Dark</span>
+        <div class="theme-pill" id="theme-pill">☾</div>
+      </button>
+      <button class="logout-btn" onclick="window.location='/login/'">Sign out</button>
+    </div>
+    <div class="topbar-time">
+      <span class="time-val" id="topbar-time-val">--:--</span>
+      <span class="date-val" id="topbar-date-val"></span>
+    </div>
+  </div>
+
+  <!-- DESKTOP -->
+  <div id="desktop">
+    <div id="grid">
+
+      <!-- TASKS -->
+      <div class="widget" id="w-tasks">
+        <div class="w-header">
+          <div class="w-icon">✓</div>
+          <div class="w-title">Tasks</div>
+          <div class="w-badge" id="task-count-badge">—</div>
+          <button class="w-action" onclick="showModal('add-task-modal')">＋</button>
+        </div>
+        <div class="task-input-row">
+          <input class="task-input" id="quick-task" placeholder="Quick add a task..." onkeydown="if(event.key==='Enter')quickAddTask()">
+          <button class="add-btn" onclick="quickAddTask()">+</button>
+        </div>
+        <div class="task-filters">
+          <button class="filter-btn active" onclick="filterTasks('all',this)">ALL</button>
+          <button class="filter-btn" onclick="filterTasks('active',this)">ACTIVE</button>
+          <button class="filter-btn" onclick="filterTasks('done',this)">DONE</button>
+        </div>
+        <div class="scroll-area"><div class="task-list" id="task-list"><div class="loading">Loading tasks…</div></div></div>
+      </div>
+
+      <!-- FOCUS / POMODORO -->
+      <div class="widget" id="w-focus">
+        <div class="w-header">
+          <div class="w-icon">⏱</div>
+          <div class="w-title">Focus Session</div>
+          <div class="w-badge" id="sessions-badge">0 sessions</div>
+        </div>
+        <div class="focus-layout">
+          <div class="pomodoro-panel">
+            <div class="timer-modes">
+              <button class="mode-btn active" onclick="setMode('pomodoro',this)">POMO</button>
+              <button class="mode-btn" onclick="setMode('short',this)">SHORT</button>
+              <button class="mode-btn" onclick="setMode('long',this)">LONG</button>
+            </div>
+            <div class="timer-ring-wrap">
+              <svg id="timer-svg" viewBox="0 0 160 160" width="150" height="150">
+                <circle id="timer-track" cx="80" cy="80" r="70"/>
+                <circle id="timer-progress" cx="80" cy="80" r="70"/>
+              </svg>
+              <div class="timer-display">
+                <div class="timer-time" id="timer-display">25:00</div>
+                <div class="timer-mode" id="timer-mode-label">FOCUS</div>
+              </div>
+            </div>
+            <div class="timer-controls">
+              <button class="timer-btn timer-btn-play" id="timer-play-btn" onclick="toggleTimer()">▶ START</button>
+              <button class="timer-btn timer-btn-reset" onclick="resetTimer()">↺</button>
+            </div>
+            <div class="session-dots" id="session-dots">
+              <div class="session-dot"></div><div class="session-dot"></div>
+              <div class="session-dot"></div><div class="session-dot"></div>
+            </div>
+          </div>
+          <div class="focus-right">
+            <div class="focus-label">CURRENT SUBJECT</div>
+            <input class="subject-input" id="focus-subject" placeholder="e.g. Mathematics…">
+            <div class="focus-stats-row">
+              <div class="focus-stat"><div class="focus-stat-val" id="stat-sessions">0</div><div class="focus-stat-label">SESSIONS</div></div>
+              <div class="focus-stat"><div class="focus-stat-val" id="stat-mins">0</div><div class="focus-stat-label">MINUTES</div></div>
+              <div class="focus-stat"><div class="focus-stat-val" id="stat-best">0</div><div class="focus-stat-label">BEST RUN</div></div>
+            </div>
+            <div class="focus-label">SESSION LOG</div>
+            <div class="scroll-area sessions-log" id="sessions-log">
+              <div class="empty-state"><div class="empty-icon">🎯</div><div class="empty-text">Start a session to track it</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- STATS -->
+      <div class="widget" id="w-stats">
+        <div class="w-header">
+          <div class="w-icon">📊</div>
+          <div class="w-title">Analytics</div>
+          <div class="w-badge">7 DAYS</div>
+        </div>
+        <div class="chart-wrap"><canvas id="stats-chart"></canvas></div>
+      </div>
+
+      <!-- HABITS -->
+      <div class="widget" id="w-habits">
+        <div class="w-header">
+          <div class="w-icon">✦</div>
+          <div class="w-title">Habits</div>
+          <button class="w-action" onclick="showModal('add-habit-modal')">＋</button>
+        </div>
+        <div class="scroll-area"><div class="habit-list" id="habit-list"><div class="loading">Loading habits…</div></div></div>
+      </div>
+
+      <!-- NOTES -->
+      <div class="widget" id="w-notes">
+        <div class="notes-sidebar">
+          <div class="notes-header">
+            <div class="w-icon" style="background:rgba(124,106,255,.15);color:var(--accent);width:26px;height:26px;font-size:12px;border-radius:8px;">✎</div>
+            <div class="notes-header-title">Notes</div>
+          </div>
+          <div class="subject-list scroll-area" id="subject-list"></div>
+          <div class="subject-add-row">
+            <input class="subject-input-field" id="subject-name-input" placeholder="Add subject…" onkeydown="if(event.key==='Enter')addSubject()">
+            <button class="add-btn" style="width:28px;height:28px;font-size:14px;" onclick="addSubject()">+</button>
+          </div>
+        </div>
+        <div class="notes-editor">
+          <input class="notes-title-input" id="note-title" placeholder="Note title…" oninput="scheduleNoteSave()">
+          <textarea class="notes-textarea" id="note-content" placeholder="Start writing your notes here…&#10;&#10;Supports markdown-style text:&#10;# Heading  **bold**  *italic*  `code`" oninput="scheduleNoteSave()"></textarea>
+          <div class="notes-toolbar">
+            <button class="toolbar-btn" onclick="insertMD('**','**')"><b>B</b></button>
+            <button class="toolbar-btn" onclick="insertMD('*','*')"><i>I</i></button>
+            <button class="toolbar-btn" onclick="insertMD('# ','')">H1</button>
+            <button class="toolbar-btn" onclick="insertMD('## ','')">H2</button>
+            <button class="toolbar-btn" onclick="insertMD('- ','')">• List</button>
+            <button class="toolbar-btn" onclick="insertMD('`','`')">Code</button>
+            <div class="notes-saved hidden" id="notes-saved-indicator">✓ Saved</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CALENDAR -->
+      <div class="widget" id="w-cal">
+        <div class="w-header">
+          <div class="w-icon">📅</div>
+          <div class="w-title">Calendar</div>
+          <div class="w-badge" id="events-badge">0 events</div>
+          <button class="w-action" onclick="showModal('add-event-modal')">＋</button>
+        </div>
+        <div class="cal-header-row">
+          <button class="cal-nav" onclick="changeMonth(-1)">‹</button>
+          <div class="cal-month" id="cal-month-label"></div>
+          <button class="cal-nav" onclick="changeMonth(1)">›</button>
+        </div>
+        <div class="cal-grid" id="cal-grid"></div>
+        <div class="cal-events-section scroll-area" id="cal-events-list"></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div id="toast-container"></div>
+
+<!-- ADD TASK MODAL -->
+<div class="modal-overlay" id="add-task-modal">
+  <div class="modal">
+    <div class="modal-title">Add Task</div>
+    <div class="modal-form">
+      <div><label class="form-label">TASK NAME</label><input class="form-input" id="mt-name" placeholder="What needs to be done?" onkeydown="if(event.key==='Enter')submitTask()"></div>
+      <div><label class="form-label">PRIORITY</label>
+        <select class="form-select" id="mt-priority">
+          <option value="high">🔴 High Priority</option>
+          <option value="med" selected>🟡 Medium Priority</option>
+          <option value="low">🟢 Low Priority</option>
+        </select>
+      </div>
+      <div><label class="form-label">SUBJECT</label><input class="form-input" id="mt-subject" placeholder="e.g. Math, Physics…"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('add-task-modal')">Cancel</button>
+      <button class="btn-primary" onclick="submitTask()">Add Task</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD HABIT MODAL -->
+<div class="modal-overlay" id="add-habit-modal">
+  <div class="modal">
+    <div class="modal-title">Add Habit</div>
+    <div class="modal-form">
+      <div><label class="form-label">HABIT NAME</label><input class="form-input" id="mh-name" placeholder="e.g. Read 30 minutes" onkeydown="if(event.key==='Enter')submitHabit()"></div>
+      <div><label class="form-label">EMOJI ICON</label><input class="form-input" id="mh-icon" placeholder="e.g. 📚 🏃 💧"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('add-habit-modal')">Cancel</button>
+      <button class="btn-primary" onclick="submitHabit()">Add Habit</button>
+    </div>
+  </div>
+</div>
+
+<!-- ADD EVENT MODAL -->
+<div class="modal-overlay" id="add-event-modal">
+  <div class="modal">
+    <div class="modal-title">Add Calendar Event</div>
+    <div class="modal-form">
+      <div><label class="form-label">EVENT NAME</label><input class="form-input" id="me-name" placeholder="e.g. Math Exam" onkeydown="if(event.key==='Enter')submitEvent()"></div>
+      <div><label class="form-label">DATE</label><input class="form-input" type="date" id="me-date"></div>
+      <div><label class="form-label">TIME (optional)</label><input class="form-input" type="time" id="me-time"></div>
+      <div><label class="form-label">COLOR</label>
+        <select class="form-select" id="me-color">
+          <option value="#7c6aff">Purple</option>
+          <option value="#ff6a9b">Pink</option>
+          <option value="#6affd4">Teal</option>
+          <option value="#ffd96a">Yellow</option>
+          <option value="#ff9f2f">Orange</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-secondary" onclick="closeModal('add-event-modal')">Cancel</button>
+      <button class="btn-primary" onclick="submitEvent()">Add Event</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ===================== CSRF =====================
+function getCsrf() {
+  return document.cookie.split(';').map(c=>c.trim()).find(c=>c.startsWith('csrftoken='))?.split('=')[1] || '';
+}
+
+async function api(url, method='GET', data=null) {
+  const opts = {
+    method,
+    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCsrf() },
+  };
+  if (data) opts.body = JSON.stringify(data);
+  const res = await fetch(url, opts);
+  return res.json();
+}
+
+// ===================== BG CANVAS =====================
+const canvas = document.getElementById('bg-canvas'), ctx = canvas.getContext('2d');
+let pts = [];
+function resizeCv() { canvas.width = innerWidth; canvas.height = innerHeight; }
+function initPts() {
+  pts = Array.from({length:55}, () => ({
+    x:Math.random()*canvas.width, y:Math.random()*canvas.height,
+    vx:(Math.random()-.5)*.35, vy:(Math.random()-.5)*.35,
+    r:Math.random()*1.5+.5, alpha:Math.random()*.5+.2,
+    col:['#7c6aff','#ff6a9b','#6affd4','#ffd96a'][Math.floor(Math.random()*4)]
+  }));
+}
+function drawBg() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  pts.forEach(p => {
+    p.x+=p.vx; p.y+=p.vy;
+    if(p.x<0||p.x>canvas.width) p.vx*=-1;
+    if(p.y<0||p.y>canvas.height) p.vy*=-1;
+    ctx.beginPath(); ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=p.col; ctx.globalAlpha=p.alpha; ctx.fill();
+  });
+  ctx.globalAlpha=1;
+  for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++) {
+    const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y, d=Math.sqrt(dx*dx+dy*dy);
+    if(d<100) {
+      ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y);
+      ctx.strokeStyle=`rgba(124,106,255,${(1-d/100)*.07})`; ctx.lineWidth=1; ctx.stroke();
+    }
+  }
+  requestAnimationFrame(drawBg);
+}
+resizeCv(); initPts(); drawBg();
+window.addEventListener('resize', () => { resizeCv(); initPts(); });
+
+// ===================== CLOCK =====================
+function updateClock() {
+  const n = new Date();
+  document.getElementById('topbar-time-val').textContent = `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}`;
+  document.getElementById('topbar-date-val').textContent = n.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
+}
+setInterval(updateClock,1000); updateClock();
+
+// ===================== THEME =====================
+let currentTheme = '{{ theme }}';
+function applyTheme(t) {
+  currentTheme = t;
+  document.documentElement.setAttribute('data-theme', t);
+  document.getElementById('theme-pill').textContent = t === 'dark' ? '☾' : '☀';
+  document.getElementById('theme-label').textContent = t === 'dark' ? 'Dark' : 'Light';
+  if (statsChart) updateChartTheme();
+}
+
+async function toggleTheme() {
+  const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+  applyTheme(newTheme);
+  await api('/api/theme/', 'POST', {theme: newTheme});
+  showToast('Theme Changed', `Switched to ${newTheme} mode`, newTheme==='dark'?'☾':'☀');
+}
+
+// ===================== TOAST =====================
+function showToast(title, msg, icon='✓') {
+  const c = document.getElementById('toast-container');
+  const t = document.createElement('div');
+  t.className='toast';
+  t.innerHTML=`<div class="toast-icon">${icon}</div><div class="toast-text"><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
+  c.appendChild(t);
+  setTimeout(()=>{t.classList.add('out');setTimeout(()=>t.remove(),300);},3000);
+}
+
+// ===================== MODALS =====================
+function showModal(id) {
+  document.getElementById(id).classList.add('show');
+  setTimeout(()=>{ const inp=document.querySelector(`#${id} .form-input`); if(inp) inp.focus(); },100);
+}
+function closeModal(id) { document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.modal-overlay').forEach(m=>m.addEventListener('click',e=>{if(e.target===m) m.classList.remove('show');}));
+
+// ===================== TASKS =====================
+let tasks = [], filterMode = 'all';
+
+async function loadTasks() {
+  const d = await api('/api/tasks/');
+  tasks = d.tasks || [];
+  renderTasks();
+}
+
+function renderTasks() {
+  const list = document.getElementById('task-list');
+  let filtered = tasks;
+  if (filterMode==='active') filtered = tasks.filter(t=>!t.done);
+  if (filterMode==='done') filtered = tasks.filter(t=>t.done);
+  const rem = tasks.filter(t=>!t.done).length;
+  document.getElementById('task-count-badge').textContent = `${rem} left`;
+  if (!filtered.length) {
+    list.innerHTML=`<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-text">${filterMode==='done'?'No completed tasks':'All clear!'}</div></div>`;
+    return;
+  }
+  list.innerHTML = filtered.map(t=>`
+    <div class="task-item ${t.done?'done':''}" data-id="${t.id}">
+      <div class="task-check" onclick="toggleTask(${t.id},${!t.done})">${t.done?'✓':''}</div>
+      <div class="task-text">${t.text}${t.subject?`<span class="task-subj">${t.subject}</span>`:''}</div>
+      <div class="task-priority priority-${t.priority}"></div>
+      <button class="task-del" onclick="deleteTask(${t.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+async function quickAddTask() {
+  const inp = document.getElementById('quick-task');
+  const text = inp.value.trim();
+  if (!text) return;
+  inp.value='';
+  const d = await api('/api/tasks/create/','POST',{text,priority:'med',subject:''});
+  tasks.unshift(d.task);
+  renderTasks();
+  showToast('Task Added',text,'✓');
+}
+
+async function submitTask() {
+  const text = document.getElementById('mt-name').value.trim();
+  if (!text) return;
+  const priority = document.getElementById('mt-priority').value;
+  const subject = document.getElementById('mt-subject').value.trim();
+  const d = await api('/api/tasks/create/','POST',{text,priority,subject});
+  tasks.unshift(d.task);
+  renderTasks();
+  closeModal('add-task-modal');
+  showToast('Task Added',text,'✓');
+}
+
+async function toggleTask(id, done) {
+  const d = await api(`/api/tasks/${id}/`,'PATCH',{done});
+  const idx = tasks.findIndex(t=>t.id===id);
+  if(idx>=0) tasks[idx].done=done;
+  renderTasks();
+}
+
+async function deleteTask(id) {
+  await api(`/api/tasks/${id}/`,'DELETE');
+  tasks = tasks.filter(t=>t.id!==id);
+  renderTasks();
+  showToast('Task Deleted','','🗑️');
+}
+
+function filterTasks(mode, btn) {
+  filterMode=mode;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderTasks();
+}
+
+// ===================== TIMER =====================
+const CIRC = 2*Math.PI*70;
+document.getElementById('timer-progress').style.strokeDasharray = CIRC;
+const timerState = {mode:'pomodoro',durations:{pomodoro:25,short:5,long:15},secs:25*60,total:25*60,running:false,interval:null,completedSessions:0};
+
+function updateTimerUI() {
+  const m=Math.floor(timerState.secs/60), s=timerState.secs%60;
+  document.getElementById('timer-display').textContent=`${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  const prog=timerState.secs/timerState.total;
+  document.getElementById('timer-progress').style.strokeDashoffset=CIRC*(1-prog);
+  const pr=document.getElementById('timer-progress');
+  pr.style.stroke=prog>.5?'var(--accent2)':prog>.2?'var(--accent4)':'var(--danger)';
+}
+
+function toggleTimer() {
+  if(timerState.running) {
+    clearInterval(timerState.interval); timerState.running=false;
+    document.getElementById('timer-play-btn').textContent='▶ RESUME';
+  } else {
+    timerState.running=true;
+    document.getElementById('timer-play-btn').textContent='⏸ PAUSE';
+    timerState.interval=setInterval(async()=>{
+      timerState.secs--;
+      updateTimerUI();
+      if(timerState.secs<=0) await timerComplete();
+    },1000);
+  }
+}
+
+async function timerComplete() {
+  clearInterval(timerState.interval); timerState.running=false;
+  document.getElementById('timer-play-btn').textContent='▶ START';
+  if(timerState.mode==='pomodoro') {
+    timerState.completedSessions++;
+    const subj = document.getElementById('focus-subject').value||'General';
+    const dur = timerState.durations[timerState.mode];
+    await api('/api/sessions/create/','POST',{subject:subj,duration:dur});
+    await loadSessions();
+    const dots=document.querySelectorAll('#session-dots .session-dot');
+    dots.forEach((d,i)=>i<timerState.completedSessions%4?d.classList.add('done'):d.classList.remove('done'));
+    if(timerState.completedSessions%4===0){dots.forEach(d=>d.classList.remove('done'));showToast('Long Break!','Take 15 mins to recharge!','🏆');setMode('long',document.querySelectorAll('.mode-btn')[2]);}
+    else{showToast('Session Done!',`Great work on ${subj}!`,'🎯');setMode('short',document.querySelectorAll('.mode-btn')[1]);}
+  } else {showToast('Break Over!','Ready for another session?','⚡');setMode('pomodoro',document.querySelector('.mode-btn'));}
+  try{const ac=new AudioContext();const o=ac.createOscillator();const g=ac.createGain();o.connect(g);g.connect(ac.destination);o.frequency.setValueAtTime(880,ac.currentTime);o.frequency.exponentialRampToValueAtTime(440,ac.currentTime+.5);g.gain.setValueAtTime(.3,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.5);o.start();o.stop(ac.currentTime+.5);}catch(e){}
+}
+
+function resetTimer() {
+  clearInterval(timerState.interval);timerState.running=false;
+  timerState.secs=timerState.durations[timerState.mode]*60;timerState.total=timerState.secs;
+  document.getElementById('timer-play-btn').textContent='▶ START';updateTimerUI();
+}
+
+function setMode(mode,btn) {
+  if(!btn) return;
+  timerState.mode=mode;timerState.secs=timerState.durations[mode]*60;timerState.total=timerState.secs;
+  clearInterval(timerState.interval);timerState.running=false;
+  document.getElementById('timer-play-btn').textContent='▶ START';
+  document.getElementById('timer-mode-label').textContent=mode==='pomodoro'?'FOCUS':mode==='short'?'SHORT BREAK':'LONG BREAK';
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');updateTimerUI();
+}
+
+async function loadSessions() {
+  const d = await api('/api/sessions/');
+  document.getElementById('stat-sessions').textContent=d.total_sessions||0;
+  document.getElementById('stat-mins').textContent=d.total_mins||0;
+  document.getElementById('stat-best').textContent=timerState.completedSessions;
+  document.getElementById('sessions-badge').textContent=`${d.total_sessions||0} sessions`;
+  const log=document.getElementById('sessions-log');
+  const sess=d.sessions||[];
+  if(!sess.length){log.innerHTML='<div class="empty-state"><div class="empty-icon">🎯</div><div class="empty-text">Start a session to track it</div></div>';return;}
+  log.innerHTML=sess.slice(0,10).map(s=>`
+    <div class="session-entry">
+      <div class="session-entry-dot"></div>
+      <div class="session-entry-subj">${s.subject}</div>
+      <div class="session-entry-dur">${s.duration}m</div>
+      <div class="session-entry-time">${s.time}</div>
+    </div>
+  `).join('');
+}
+
+// ===================== HABITS =====================
+let habits = [];
+
+async function loadHabits() {
+  const d = await api('/api/habits/');
+  habits = d.habits||[];
+  renderHabits();
+}
+
+function renderHabits() {
+  const list=document.getElementById('habit-list');
+  const dayL=['M','T','W','T','F','S','S'];
+  if(!habits.length){list.innerHTML='<div class="empty-state"><div class="empty-icon">✦</div><div class="empty-text">Add your first habit!</div></div>';return;}
+  list.innerHTML=habits.map(h=>{
+    const pct=(h.days.filter(Boolean).length/7)*100;
+    return `<div class="habit-item">
+      <div class="habit-header">
+        <div class="habit-icon-em">${h.icon}</div>
+        <div class="habit-name">${h.name}</div>
+        <div class="habit-streak">🔥 ${h.streak}d</div>
+        <button class="habit-del" onclick="deleteHabit(${h.id})">✕</button>
+      </div>
+      <div class="habit-dots">
+        ${h.days.map((done,di)=>`<div class="habit-dot ${done?'done':''}" onclick="toggleHabitDay(${h.id},${di})" title="${dayL[di]}">${dayL[di]}</div>`).join('')}
+      </div>
+      <div class="habit-bar"><div class="habit-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }).join('');
+}
+
+async function toggleHabitDay(id, dayIdx) {
+  const d = await api(`/api/habits/${id}/toggle/`,'PATCH',{day_index:dayIdx});
+  const idx=habits.findIndex(h=>h.id===id);
+  if(idx>=0) habits[idx]=d.habit;
+  renderHabits();
+  updateStreakBadge();
+}
+
+async function deleteHabit(id) {
+  await api(`/api/habits/${id}/delete/`,'DELETE');
+  habits=habits.filter(h=>h.id!==id);
+  renderHabits();
+  showToast('Habit Removed','','🗑️');
+}
+
+async function submitHabit() {
+  const name=document.getElementById('mh-name').value.trim();
+  const icon=document.getElementById('mh-icon').value.trim()||'✦';
+  if(!name) return;
+  const d=await api('/api/habits/create/','POST',{name,icon});
+  habits.unshift(d.habit);
+  renderHabits();
+  closeModal('add-habit-modal');
+  showToast('Habit Added',name,icon);
+}
+
+function updateStreakBadge() {
+  const max=habits.length?Math.max(...habits.map(h=>h.streak)):0;
+  document.getElementById('streak-count').textContent=max;
+}
+
+// ===================== SUBJECTS + NOTES =====================
+let subjects=[], currentSubjectId=null;
+let noteSaveTimer=null;
+
+async function loadSubjects() {
+  const d=await api('/api/subjects/');
+  subjects=d.subjects||[];
+  renderSubjects();
+  if(subjects.length) selectSubject(subjects[0]);
+}
+
+function renderSubjects() {
+  const list=document.getElementById('subject-list');
+  list.innerHTML=subjects.map(s=>`
+    <div class="subject-item ${currentSubjectId===s.id?'active':''}" onclick="selectSubjectById(${s.id})">
+      <div class="subject-dot" style="background:${s.color}"></div>${s.name}
+    </div>
+  `).join('');
+}
+
+async function selectSubjectById(id) {
+  const s=subjects.find(x=>x.id===id);
+  if(s) selectSubject(s);
+}
+
+async function selectSubject(s) {
+  currentSubjectId=s.id;
+  renderSubjects();
+  const d=await api('/api/notes/');
+  const note=(d.notes||[]).find(n=>n.subject_id===s.id)||{title:'',content:''};
+  document.getElementById('note-title').value=note.title||'';
+  document.getElementById('note-content').value=note.content||'';
+}
+
+async function addSubject() {
+  const inp=document.getElementById('subject-name-input');
+  const name=inp.value.trim();
+  if(!name) return;
+  const d=await api('/api/subjects/create/','POST',{name});
+  subjects.push(d.subject);
+  inp.value='';
+  renderSubjects();
+  showToast('Subject Added',name,'📓');
+}
+
+function scheduleNoteSave() {
+  clearTimeout(noteSaveTimer);
+  noteSaveTimer=setTimeout(saveNote,1200);
+}
+
+async function saveNote() {
+  if(!currentSubjectId) return;
+  await api('/api/notes/save/','POST',{
+    subject_id:currentSubjectId,
+    title:document.getElementById('note-title').value,
+    content:document.getElementById('note-content').value,
+  });
+  const ind=document.getElementById('notes-saved-indicator');
+  ind.classList.remove('hidden');
+  setTimeout(()=>ind.classList.add('hidden'),2500);
+}
+
+function insertMD(b,a) {
+  const ta=document.getElementById('note-content');
+  const s=ta.selectionStart,e=ta.selectionEnd,sel=ta.value.substring(s,e);
+  ta.value=ta.value.substring(0,s)+b+sel+a+ta.value.substring(e);
+  ta.focus();ta.setSelectionRange(s+b.length,e+b.length+sel.length);
+  scheduleNoteSave();
+}
+
+// ===================== CALENDAR =====================
+let events=[], calMonth=new Date().getMonth(), calYear=new Date().getFullYear(), calSelected=null;
+
+async function loadEvents() {
+  const d=await api('/api/events/');
+  events=d.events||[];
+  renderCalendar();
+}
+
+function renderCalendar() {
+  const mNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('cal-month-label').textContent=`${mNames[calMonth]} ${calYear}`;
+  document.getElementById('events-badge').textContent=`${events.length} events`;
+  const grid=document.getElementById('cal-grid');
+  const dayL=['Mo','Tu','We','Th','Fr','Sa','Su'];
+  let html=dayL.map(d=>`<div class="cal-day-label">${d}</div>`).join('');
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const offset=(firstDay+6)%7;
+  const dim=new Date(calYear,calMonth+1,0).getDate();
+  const prev=new Date(calYear,calMonth,0).getDate();
+  const today=new Date();
+  for(let i=offset-1;i>=0;i--) html+=`<div class="cal-day other-month">${prev-i}</div>`;
+  for(let d=1;d<=dim;d++) {
+    const isToday=d===today.getDate()&&calMonth===today.getMonth()&&calYear===today.getFullYear();
+    const dateStr=`${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isSel=calSelected&&calSelected.d===d&&calSelected.m===calMonth&&calSelected.y===calYear;
+    const hasEv=events.some(e=>e.date===dateStr);
+    html+=`<div class="cal-day ${isToday?'today':''} ${isSel&&!isToday?'selected':''} ${hasEv?'has-event':''}" onclick="selectCalDay(${d})">${d}</div>`;
+  }
+  const total=offset+dim; const rem=(7-total%7)%7;
+  for(let d=1;d<=rem;d++) html+=`<div class="cal-day other-month">${d}</div>`;
+  grid.innerHTML=html;
+  renderCalEvents();
+}
+
+function selectCalDay(d) {calSelected={d,m:calMonth,y:calYear};renderCalendar();}
+function changeMonth(delta) {
+  calMonth+=delta;
+  if(calMonth>11){calMonth=0;calYear++;}
+  if(calMonth<0){calMonth=11;calYear--;}
+  renderCalendar();
+}
+
+function renderCalEvents() {
+  const list=document.getElementById('cal-events-list');
+  let evts=events;
+  if(calSelected){
+    const ds=`${calSelected.y}-${String(calSelected.m+1).padStart(2,'0')}-${String(calSelected.d).padStart(2,'0')}`;
+    evts=events.filter(e=>e.date===ds);
+  }
+  if(!evts.length){list.innerHTML='<div class="empty-state"><div class="empty-icon">📅</div><div class="empty-text">No events. Click + to add</div></div>';return;}
+  list.innerHTML=evts.slice(0,5).map(e=>`
+    <div class="cal-event-item" style="background:${e.color}14;border-left-color:${e.color}">
+      <div style="flex:1;font-size:12px;">${e.name}</div>
+      <div class="cal-event-time">${e.time||'—'}</div>
+      <div class="cal-event-del" onclick="deleteEvent(${e.id})">✕</div>
+    </div>
+  `).join('');
+}
+
+async function submitEvent() {
+  const name=document.getElementById('me-name').value.trim();
+  const date=document.getElementById('me-date').value;
+  const time=document.getElementById('me-time').value;
+  const color=document.getElementById('me-color').value;
+  if(!name||!date) return;
+  const d=await api('/api/events/create/','POST',{name,date,time,color});
+  events.push(d.event);
+  renderCalendar();
+  closeModal('add-event-modal');
+  showToast('Event Added',name,'📅');
+}
+
+async function deleteEvent(id) {
+  await api(`/api/events/${id}/delete/`,'DELETE');
+  events=events.filter(e=>e.id!==id);
+  renderCalendar();
+}
+
+// ===================== ANALYTICS =====================
+let statsChart=null;
+
+async function loadAnalytics() {
+  const d=await api('/api/analytics/');
+  document.getElementById('streak-count').textContent=d.streak||0;
+  const labels=d.days.map(x=>x.label);
+  const sessions=d.days.map(x=>x.sessions);
+  const mins=d.days.map(x=>x.minutes);
+  const tasks_done=d.days.map(x=>x.tasks_done);
+  renderChart(labels, sessions, mins, tasks_done);
+}
+
+function getChartColors() {
+  const isDark = currentTheme==='dark';
+  return {
+    grid: isDark?'rgba(255,255,255,0.04)':'rgba(0,0,0,0.06)',
+    ticks: isDark?'#7070a0':'#5555a0',
+    legend: isDark?'#7070a0':'#5555a0',
+  };
+}
+
+function renderChart(labels, sessions, mins, tasks_done) {
+  const cvs=document.getElementById('stats-chart').getContext('2d');
+  const c=getChartColors();
+  if(statsChart) statsChart.destroy();
+  statsChart=new Chart(cvs,{
+    type:'bar',
+    data:{
+      labels,
+      datasets:[
+        {label:'Sessions',data:sessions,backgroundColor:'rgba(124,106,255,.6)',borderColor:'rgba(124,106,255,1)',borderWidth:2,borderRadius:6},
+        {label:'Minutes',data:mins,backgroundColor:'rgba(106,255,212,.2)',borderColor:'rgba(106,255,212,.8)',borderWidth:2,type:'line',yAxisID:'y1',tension:.4,pointBackgroundColor:'rgba(106,255,212,1)',pointRadius:4},
+        {label:'Tasks Done',data:tasks_done,backgroundColor:'rgba(255,217,106,.4)',borderColor:'rgba(255,217,106,.9)',borderWidth:2,borderRadius:6,yAxisID:'y'},
+      ]
+    },
+    options:{
+      responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:c.legend,font:{size:10,family:'Space Mono'}}}},
+      scales:{
+        x:{grid:{color:c.grid},ticks:{color:c.ticks,font:{size:10,family:'Space Mono'}}},
+        y:{grid:{color:c.grid},ticks:{color:c.ticks,font:{size:10}}},
+        y1:{position:'right',grid:{display:false},ticks:{color:c.ticks,font:{size:10}}},
+      }
+    }
+  });
+}
+
+function updateChartTheme() {
+  if(!statsChart) return;
+  const c=getChartColors();
+  statsChart.options.scales.x.grid.color=c.grid;
+  statsChart.options.scales.y.grid.color=c.grid;
+  statsChart.options.scales.x.ticks.color=c.ticks;
+  statsChart.options.scales.y.ticks.color=c.ticks;
+  statsChart.options.scales.y1.ticks.color=c.ticks;
+  statsChart.options.plugins.legend.labels.color=c.legend;
+  statsChart.update();
+}
+
+// ===================== SET DEFAULT DATE =====================
+document.getElementById('me-date').value=new Date().toISOString().split('T')[0];
+
+// ===================== INIT =====================
+async function init() {
+  applyTheme(currentTheme);
+  await Promise.all([loadTasks(), loadHabits(), loadSubjects(), loadEvents(), loadSessions(), loadAnalytics()]);
+  updateTimerUI();
+}
+
+init();
+</script>
+</body>
+</html>
