@@ -9,6 +9,8 @@ DEBUG = False
 
 ALLOWED_HOSTS = ['*']
 
+MIDDLEWARE = ['whitenoise.middleware.WhiteNoiseMiddleware',]
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',
